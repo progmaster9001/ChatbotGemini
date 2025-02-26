@@ -28,14 +28,13 @@ import theweeb.dev.chatbotbiometricauth.model.toChatContent
 data class ConversationState(
     val model: BaseModel? = null,
     var messageCollectionJob: Job? = null,
-    val currentConversation: ConversationWithMessages = ConversationWithMessages(),
     val conversations: List<Conversation> = emptyList(),
     val modelNoteResponse: String = "",
     val bitmap: Bitmap? = null,
     val currentMessage: String = "",
     val isConversationLoading: Boolean = true
 ){
-    fun createModel(personality: Personality): BaseModel{
+    fun createModel(personality: Personality, currentConversation: ConversationWithMessages): BaseModel{
         val functions = listOf(
             defineFunction(
                 name = "createNote",

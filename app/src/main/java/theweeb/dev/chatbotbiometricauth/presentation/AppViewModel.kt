@@ -10,10 +10,13 @@ import com.google.ai.client.generativeai.type.FunctionResponsePart
 import com.google.ai.client.generativeai.type.InvalidStateException
 import com.google.ai.client.generativeai.type.content
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -23,6 +26,7 @@ import theweeb.dev.chatbotbiometricauth.bitmapToByteArray
 import theweeb.dev.chatbotbiometricauth.data.DatabaseModel
 import theweeb.dev.chatbotbiometricauth.dataStore
 import theweeb.dev.chatbotbiometricauth.model.Conversation
+import theweeb.dev.chatbotbiometricauth.model.ConversationWithMessages
 import theweeb.dev.chatbotbiometricauth.model.Message
 import theweeb.dev.chatbotbiometricauth.model.Note
 import theweeb.dev.chatbotbiometricauth.model.NoteSerializable
@@ -44,6 +48,17 @@ class AppViewModel(
             started = SharingStarted.Eagerly,
             initialValue = emptyList()
         )
+
+    private val _currentConversationId = MutableStateFlow<String?>(null)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val currentConversation = _currentConversationId.flatMapLatest { id ->
+        id?.let { conversationDao.getConversationWithMessages(it) } ?: emptyFlow()
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.Eagerly,
+        initialValue = ConversationWithMessages()
+    )
 
     val notes: Flow<List<NoteTuple>>
         get() = noteDao.getNoteTitles().stateIn(
@@ -71,14 +86,8 @@ class AppViewModel(
         }
     }
 
-    fun getConversation(conversationId: String){
-        if(conversationId.isNotBlank()){
-            viewModelScope.launch {
-                conversationDao.getConversationWithMessages(conversationId).collect{ conversation ->
-                    _state.update { it.copy(currentConversation = conversation) }
-                }
-            }
-        }
+    fun setConversationId(conversationId: String){
+        _currentConversationId.update { conversationId }
     }
 
     suspend fun getNote(id: String) {
@@ -103,12 +112,11 @@ class AppViewModel(
                 val conversationId = preferences[Constant.conversationId]
                 if(personality != null && conversationId != null)
                     _state.update {
+                        setConversationId(conversationId)
                         it.copy(
                             model = _state.value.createModel(
                                 personality = Personality.valueOf(personality),
-                            ),
-                            currentConversation = it.currentConversation.copy(
-                                conversation = it.currentConversation.conversation.copy(conversationId = conversationId)
+                                currentConversation = currentConversation.value
                             ),
                             isConversationLoading = false
                         )
@@ -162,13 +170,7 @@ class AppViewModel(
             is ConversationEvent.CreateConversation -> {
                 viewModelScope.launch {
                     conversationDao.createConversation(event.conversation)
-                    _state.update {
-                        it.copy(
-                            currentConversation = it.currentConversation.copy(
-                                conversation = event.conversation
-                            )
-                        )
-                    }
+                    setConversationId(event.conversation.conversationId)
                 }
             }
         }

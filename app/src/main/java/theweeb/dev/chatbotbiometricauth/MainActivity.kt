@@ -67,7 +67,7 @@ class MainActivity : ComponentActivity() {
 
                 val conversationState by viewModel.state.collectAsStateWithLifecycle()
                 val noteTitles by viewModel.notes.collectAsStateWithLifecycle(emptyList())
-
+                val currentConversation by viewModel.currentConversation.collectAsStateWithLifecycle()
                 val navController = rememberNavController()
 
                 Scaffold(
@@ -99,6 +99,8 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 HomeRoute(
                                     modifier = Modifier.navigationBarsPadding(),
+                                    currentConversation = currentConversation,
+                                    setConversationId = viewModel::setConversationId,
                                     conversationState = conversationState,
                                     drawerState = drawerState,
                                     viewModel = viewModel,

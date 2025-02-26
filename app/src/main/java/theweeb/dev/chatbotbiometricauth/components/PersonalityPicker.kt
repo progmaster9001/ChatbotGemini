@@ -2,6 +2,7 @@ package theweeb.dev.chatbotbiometricauth.components
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,15 +43,15 @@ import java.util.UUID
 @Composable
 fun PersonalityPicker(
     modifier: Modifier = Modifier,
+    scrollState: ScrollState,
     conversations: List<Conversation>,
     models: List<Model> = Model.getPersonalities(),
     onChosenPersonality: (Personality) -> Unit,
-    createConversation: (Conversation) -> Unit,
-    onSelectedConversation: (String) -> Unit
+    createConversation: (Conversation) -> Unit
 ) {
     Box(modifier = modifier.padding(16.dp)) {
         Column(
-            modifier = Modifier.verticalScroll(rememberScrollState()),
+            modifier = Modifier.verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(8.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -60,8 +61,7 @@ fun PersonalityPicker(
                     model = model,
                     modelConversations = modelConversations,
                     onChosenPersonality = onChosenPersonality,
-                    createConversation = createConversation,
-                    onSelectedConversation = onSelectedConversation
+                    createConversation = createConversation
                 )
             }
         }
@@ -74,8 +74,7 @@ fun PersonalityCard(
     modelConversations: List<Conversation>,
     modifier: Modifier = Modifier,
     onChosenPersonality: (Personality) -> Unit,
-    createConversation: (Conversation) -> Unit,
-    onSelectedConversation: (String) -> Unit
+    createConversation: (Conversation) -> Unit
 ) {
 
     var isPersonalitySelected by remember {
@@ -132,9 +131,8 @@ fun PersonalityCard(
                     modelConversations.forEach { conversation ->
                         ConversationItem(
                             conversation = conversation
-                        ){ conversationId ->
+                        ){
                             onChosenPersonality(model.modelPersonality)
-                            onSelectedConversation(conversationId)
                         }
                     }
                 }
@@ -159,10 +157,10 @@ fun PersonalityCard(
 fun ConversationItem(
     conversation: Conversation,
     modifier: Modifier = Modifier,
-    onSelectedConversation: (String) -> Unit,
+    onSelectedConversation: () -> Unit,
 ) {
     TextButton(
-        onClick = { onSelectedConversation(conversation.conversationId) },
+        onClick = onSelectedConversation,
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(

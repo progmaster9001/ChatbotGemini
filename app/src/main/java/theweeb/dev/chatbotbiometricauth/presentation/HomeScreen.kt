@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.windowInsetsBottomHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Menu
@@ -61,11 +62,14 @@ import theweeb.dev.chatbotbiometricauth.components.LatestNavigator
 import theweeb.dev.chatbotbiometricauth.components.MessageField
 import theweeb.dev.chatbotbiometricauth.components.ModelSnackBar
 import theweeb.dev.chatbotbiometricauth.components.PersonalityPicker
+import theweeb.dev.chatbotbiometricauth.model.ConversationWithMessages
 import theweeb.dev.chatbotbiometricauth.model.Personality
 
 @Composable
 fun HomeRoute(
     modifier: Modifier = Modifier,
+    currentConversation: ConversationWithMessages,
+    setConversationId: (String) -> Unit,
     conversationState: ConversationState,
     drawerState: DrawerState,
     viewModel: AppViewModel,
@@ -77,13 +81,6 @@ fun HomeRoute(
 
     LaunchedEffect(Unit) {
         viewModel.getModel(context)
-    }
-
-    LaunchedEffect(conversationState.currentConversation.conversation.conversationId) {
-        Log.d("currentConversationId",
-            conversationState.currentConversation.conversation.conversationId
-        )
-        viewModel.getConversation(conversationState.currentConversation.conversation.conversationId)
     }
 
     BackHandler(
@@ -98,10 +95,11 @@ fun HomeRoute(
     HomeScreen(
         modifier = modifier,
         storedImageBitmap = conversationState.bitmap,
+        currentConversation = currentConversation,
+        setConversationId = setConversationId,
         conversationState = conversationState,
         conversationEvent = viewModel::conversationEvent,
         saveModel = viewModel::saveModel,
-        getConversation = viewModel::getConversation,
         openDrawer = openDrawer,
         clearModel = viewModel::clearModel,
         clearSnackBarMessage = viewModel::clearSnackBarMessage,
@@ -117,10 +115,11 @@ fun HomeRoute(
 private fun HomeScreen(
     modifier: Modifier = Modifier,
     storedImageBitmap: Bitmap?,
+    currentConversation: ConversationWithMessages,
+    setConversationId: (String) -> Unit,
     conversationState: ConversationState,
     conversationEvent: (ConversationEvent) -> Unit,
     saveModel: (Context, Personality, String) -> Unit,
-    getConversation: (String) -> Unit,
     openDrawer: () -> Unit,
     clearModel: (Context) -> Unit,
     clearSnackBarMessage: () -> Unit,
@@ -130,8 +129,9 @@ private fun HomeScreen(
 ) {
 
     val lazyListState = rememberLazyListState()
-    val conversation = conversationState.currentConversation.conversation
-    val messages = conversationState.currentConversation.messages
+    val scrollState = rememberScrollState()
+    val conversation = currentConversation.conversation
+    val messages = currentConversation.messages
 
     val isLastItemVisible by remember {
         derivedStateOf {
@@ -171,7 +171,7 @@ private fun HomeScreen(
         }
     }
 
-    LaunchedEffect(conversationState.currentConversation) {
+    LaunchedEffect(messages) {
         if(messages.isNotEmpty())
             lazyListState.animateScrollToItem(0)
     }
@@ -226,6 +226,7 @@ private fun HomeScreen(
                                     ){
                                         PersonalityPicker(
                                             modifier = modifier.fillMaxWidth(),
+                                            scrollState = scrollState,
                                             conversations = conversationState.conversations,
                                             onChosenPersonality = { personality ->
                                                 saveModel(context, personality, conversation.conversationId)
@@ -233,9 +234,7 @@ private fun HomeScreen(
                                             createConversation = { conversation ->
                                                 conversationEvent(ConversationEvent.CreateConversation(conversation))
                                             }
-                                        ){ conversationId ->
-                                            getConversation(conversationId)
-                                        }
+                                        )
                                     }
                                 false ->
                                     LazyColumn(
